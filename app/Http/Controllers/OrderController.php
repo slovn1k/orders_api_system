@@ -2,28 +2,95 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Events\OrderStatusChange;
 use App\Models\Order;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
+    const PENDING = 'pending';
+
     public function index(Request $request)
     {
-        return 'Hello World';
+        $query = Order::query();
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('tags')) {
+            $query->whereHas('tags', function ($q) use ($request) {
+                $q->whereIn('slug', $request->tags);
+            });
+        }
+
+        if ($query->doesntExist()) {
+            return 'No orders found';
+        }
+
+        return response()->json($query->with('tags', 'items')->get());
     }
 
     public function show(Request $request)
     {
+        $order = Order::with('tags', 'items')
+            ->where('order_number', $request->order_number)
+            ->firstOrFail();
+
+        return response()->json($order);
     }
 
     public function store(Request $request)
     {
+        $validate = $request->validate([
+            'order_number' => 'required|string|unique:orders,order_number',
+            'total_amount' => 'required|numeric',
+            'tags' => 'array',
+            'tags.*' => 'exists:tags,slug',
+            'items' => 'array',
+            'items.*.product_name' => 'required|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+        ]);
+
+        $order = Order::create([
+            'order_number' => $validate['order_number'],
+            'status' => self::PENDING,
+            'total_amount' => $validate['total_amount'],
+        ]);
+
+        if (!empty($validate['tags'])) {
+            $order->tags()->sync($validate['tags']);
+        }
+
+        if (!empty($validate['items'])) {
+            $order->items()->createMany($validate['items']);
+        }
+
+        return response()->json($order->load('tags', 'items'));
     }
 
-    public function update(Request $request)
+    public function update(Request $request, $order_number)
     {
+        $order = Order::where('order_number', $order_number)->firstOrFail();
+
+        $validate = $request->validate([
+            'status' => 'in:pending,shipped,delivered,cancelled',
+            'tags' => 'array',
+            'tags.*' => 'exists:tags,slug',
+        ]);
+
+        if (!empty($validate['status']) && $validate['status'] != $order->status) {
+            $oldStatus = $order->status;
+            $order->status = $validate['status'];
+            event(new OrderStatusChange($order, $oldStatus));
+        }
+
+        if (!empty($validate['tags'])) {
+            $order->tags()->sync($validate['tags']);
+        }
+
+        $order->save();
+        return response()->json($order->load('tags', 'items'));
     }
 }
