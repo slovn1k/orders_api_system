@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 use App\Enums\OrderStatus;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -88,7 +89,7 @@ class OrderController extends Controller
         if (!empty($validate['status']) && $validate['status'] != $order->status) {
             $oldStatus = $order->status;
             $order->status = $validate['status'];
-//            event(new OrderStatusChange($order, $oldStatus));
+            event(new OrderStatusChange($order, $oldStatus));
         }
 
         if (!empty($validate['tags'])) {

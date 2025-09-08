@@ -11,6 +11,8 @@ class Order extends Model
 {
     use SoftDeletes;
 
+    protected $table = 'orders';
+
     protected $fillable = ['order_number', 'status', 'total_amount'];
     protected $casts = [
         'status' => OrderStatus::class,

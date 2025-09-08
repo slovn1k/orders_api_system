@@ -6,10 +6,13 @@ use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 class JobOrderNotification implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $order;
     protected $oldStatus;
@@ -20,8 +23,8 @@ class JobOrderNotification implements ShouldQueue
         $this->oldStatus = $oldStatus;
     }
 
-    public function handle()
+    public function handle(): void
     {
-        Log::info("Change of status for order {$this->order->order_number}, form {$this->oldStatus} to {$this->order->status}.");
+        Log::info("Change of status for order {$this->order->order_number}, form {$this->oldStatus->name} to {$this->order->status->name}.");
     }
 }
