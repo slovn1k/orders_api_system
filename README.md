@@ -22,7 +22,7 @@ cd orders_api_system
 
 
 # Install Dependencies:Run the following command to install PHP dependencies:
-composer install
+    composer install
 
 
 # Set Up Docker
