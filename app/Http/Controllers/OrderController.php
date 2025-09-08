@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Events\OrderStatusChange;
 use App\Models\Order;
+use App\Models\Tag;
 use Illuminate\Http\Request;
+use App\Enums\OrderStatus;
 
 class OrderController extends Controller
 {
-    const PENDING = 'pending';
-
     public function index(Request $request)
     {
         $query = Order::query();
@@ -55,12 +55,17 @@ class OrderController extends Controller
 
         $order = Order::create([
             'order_number' => $validate['order_number'],
-            'status' => self::PENDING,
+            'status' => OrderStatus::PENDING,
             'total_amount' => $validate['total_amount'],
         ]);
 
         if (!empty($validate['tags'])) {
-            $order->tags()->sync($validate['tags']);
+            try {
+                $tagIds = Tag::whereIn('slug', $validate['tags'])->pluck('id')->toArray();
+                $order->tags()->sync($tagIds);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Failed to sync tags'], 500);
+            }
         }
 
         if (!empty($validate['items'])) {
@@ -75,7 +80,7 @@ class OrderController extends Controller
         $order = Order::where('order_number', $order_number)->firstOrFail();
 
         $validate = $request->validate([
-            'status' => 'in:pending,shipped,delivered,cancelled',
+            'status' => 'in:pending,shipped,delivered,canceled',
             'tags' => 'array',
             'tags.*' => 'exists:tags,slug',
         ]);
@@ -83,11 +88,16 @@ class OrderController extends Controller
         if (!empty($validate['status']) && $validate['status'] != $order->status) {
             $oldStatus = $order->status;
             $order->status = $validate['status'];
-            event(new OrderStatusChange($order, $oldStatus));
+//            event(new OrderStatusChange($order, $oldStatus));
         }
 
         if (!empty($validate['tags'])) {
-            $order->tags()->sync($validate['tags']);
+            try {
+                $tagIds = Tag::whereIn('slug', $validate['tags'])->pluck('id')->toArray();
+                $order->tags()->sync($tagIds);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Failed to sync tags'], 500);
+            }
         }
 
         $order->save();

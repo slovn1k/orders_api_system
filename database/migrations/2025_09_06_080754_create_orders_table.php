@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('order_number')->unique();
-            $table->enum('status', ['pending', 'shipped', 'delivered', 'cancelled'])->default('pending');
+            $table->enum('status', ['pending', 'shipped', 'delivered', 'canceled'])->default('pending');
             $table->decimal('total_amount', 8, 2)->default(0);
             $table->timestamps();
             $table->softDeletes();

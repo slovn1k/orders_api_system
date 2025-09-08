@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Container\Attributes\Tag;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\OrderStatus;
+use App\Models\Tag;
 
 class Order extends Model
 {
@@ -12,7 +13,7 @@ class Order extends Model
 
     protected $fillable = ['order_number', 'status', 'total_amount'];
     protected $casts = [
-        'status' => '',
+        'status' => OrderStatus::class,
         'total_amount' => 'decimal:2',
     ];
 
@@ -25,6 +26,6 @@ class Order extends Model
 
     public function items()
     {
-        return $this->belongsToMany(OrderItems::class);
+        return $this->hasMany(OrderItems::class);
     }
 }
